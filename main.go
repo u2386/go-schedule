@@ -7,16 +7,16 @@ import (
 )
 
 var (
-	out      = make(chan interface{}, 1)
+	out       = make(chan interface{}, 1)
 	scheduler schedule.Scheduler
 )
 
-func runWithReturn(s string, o chan<- interface{}) {
-	o <- fmt.Sprint(s)
+func runWithReturn(s string) {
+	out <- fmt.Sprint(s)
 }
 
 func main() {
-	var args = []interface{}{"Test", out}
+	var args = []interface{}{"Test"}
 	scheduler.Do(runWithReturn, args...)
 	scheduler.RunAll()
 }

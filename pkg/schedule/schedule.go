@@ -33,7 +33,16 @@ func (s *Scheduler) Do(fn interface{}, args ...interface{}) {
 	if fv.Kind() != reflect.Func {
 		panic("Argument fn must be a function type")
 	}
-	in := make([]reflect.Value, len(args))
+	ft := fv.Type()
+	if ft.NumIn() == 0 {
+		s.addJob(&job{
+			f:        fv,
+			args:     nil,
+			interval: 1,
+		})
+		return
+	}
+	in := make([]reflect.Value, ft.NumIn())
 	for i := range args {
 		in[i] = reflect.ValueOf(args[i])
 	}
