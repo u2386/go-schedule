@@ -1,6 +1,10 @@
 package schedule
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+	"runtime"
+)
 
 // Scheduler is a realtime job-arrangement manager.
 type Scheduler struct {
@@ -43,8 +47,12 @@ func (s *Scheduler) Do(fn interface{}, args ...interface{}) {
 		return
 	}
 	in := make([]reflect.Value, ft.NumIn())
-	for i := range args {
+	for i := range in {
 		in[i] = reflect.ValueOf(args[i])
+		if in[i].Kind() != ft.In(i).Kind() {
+			fname := runtime.FuncForPC(fv.Pointer()).Name()
+			panic(fmt.Sprintf("cannot use type %T as type %s in argument to %s", args[i], ft.In(i).Name(), fname))
+		}
 	}
 	s.addJob(&job{
 		f:        fv,
