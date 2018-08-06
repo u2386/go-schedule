@@ -9,10 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	out       = make(chan interface{}, 1)
-	scheduler Scheduler
-)
+var out = make(chan interface{}, 1)
 
 func TestJob(t *testing.T) {
 	j := &job{
@@ -21,8 +18,21 @@ func TestJob(t *testing.T) {
 		}),
 		args: []reflect.Value{reflect.ValueOf("Test")},
 	}
-	j.Run()
+	j.run()
 	assert.Equal(t, <-out, "Test", "they should be equal")
+}
+
+func TestSchedulePanic(t *testing.T) {
+	var scheduler Scheduler
+	defer func() {
+		r := recover()
+		if r == nil || !strings.HasPrefix(r.(string), "cannot use type int as type string in argument") {
+			t.Errorf("should panic for argument type mismatch")
+		}
+	}()
+	scheduler.Every(1).Do(func(s string) {
+		out <- fmt.Sprint(s)
+	}, 1)
 }
 
 var tests = []struct {
@@ -43,22 +53,11 @@ var tests = []struct {
 }
 
 func TestSchedule(t *testing.T) {
+	var scheduler Scheduler
 	for _, test := range tests {
-		scheduler.Do(test.fn, test.args...)
+		scheduler.Every(1).Do(test.fn, test.args...)
 		scheduler.RunOnce()
-		assert.Equal(t, <-out, test.expect, "they should be equal")
+		assert.Equal(t, test.expect, <-out, "they should be equal")
 	}
 }
 
-func TestSchedulePanic(t *testing.T) {
-	defer func() {
-		r := recover()
-		if r == nil || !strings.HasPrefix(r.(string), "cannot use type int as type string in argument") {
-			t.Errorf("should panic for argument type mismatch")
-		}
-	}()
-	scheduler.Do(func(s string) {
-		out <- fmt.Sprint(s)
-	}, 1)
-	scheduler.RunOnce()
-}
