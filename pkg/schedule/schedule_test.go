@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -30,9 +31,9 @@ func TestSchedulePanic(t *testing.T) {
 			t.Errorf("should panic for argument type mismatch")
 		}
 	}()
-	scheduler.Every(1).Do(func(s string) {
+	scheduler.Do(func(s string) {
 		out <- fmt.Sprint(s)
-	}, 1)
+	}, 1).Every(1)
 }
 
 var tests = []struct {
@@ -55,9 +56,47 @@ var tests = []struct {
 func TestSchedule(t *testing.T) {
 	var scheduler Scheduler
 	for _, test := range tests {
-		scheduler.Every(1).Do(test.fn, test.args...)
+		scheduler.Do(test.fn, test.args...).Every(1)
 		scheduler.RunOnce()
 		assert.Equal(t, test.expect, <-out, "they should be equal")
 	}
 }
 
+func TestScheduleUnits(t *testing.T) {
+	var j *job
+	var scheduler Scheduler
+
+	scheduler.Do(func() {}).Every(1).Seconds()
+	j = scheduler.jobs[len(scheduler.jobs)-1]
+	assert.Equal(t, time.Second, j.unit, "they should be equal")
+
+	scheduler.Do(func() {}).Every(1).Minutes()
+	j = scheduler.jobs[len(scheduler.jobs)-1]
+	assert.Equal(t, time.Minute, j.unit, "they should be equal")
+
+	scheduler.Do(func() {}).Every(1).Hours()
+	j = scheduler.jobs[len(scheduler.jobs)-1]
+	assert.Equal(t, time.Hour, j.unit, "they should be equal")
+}
+
+func (s *Scheduler) mockSchedule(j *job, now time.Time) {
+	j.nextTime = now.Add(time.Duration(j.interval) * j.unit)
+}
+
+func TestScheduleNextTime(t *testing.T) {
+	var j *job
+	var scheduler Scheduler
+	now := time.Date(2018, 8, 9, 22, 40, 59, 0, time.UTC)
+
+	j = &job{interval: 2, unit: time.Second}
+	scheduler.mockSchedule(j, now)
+	assert.Equal(t, time.Date(2018, 8, 9, 22, 41, 1, 0, time.UTC), j.nextTime)
+
+	j = &job{interval: 1, unit: time.Minute}
+	scheduler.mockSchedule(j, now)
+	assert.Equal(t, time.Date(2018, 8, 9, 22, 41, 59, 0, time.UTC), j.nextTime)
+
+	j = &job{interval: 1, unit: time.Hour}
+	scheduler.mockSchedule(j, now)
+	assert.Equal(t, time.Date(2018, 8, 9, 23, 40, 59, 0, time.UTC), j.nextTime)
+}

@@ -1,43 +1,39 @@
 package schedule
 
 import (
-	"fmt"
 	"reflect"
-	"runtime"
+	"time"
 )
 
 type job struct {
 	f         reflect.Value
 	args      []reflect.Value
-	interval  int
-	unit      int
+	interval  uint
+	unit      time.Duration
 	scheduler *Scheduler
+	nextTime  time.Time
+	lastTime  time.Time
 }
 
 func (j *job) run() {
+	j.lastTime = time.Now()
 	j.f.Call(j.args)
 }
 
-// Do accepts function pointer and it's arguments for scheduler to run.
-func (j *job) Do(fn interface{}, args ...interface{}) {
-	fv := reflect.ValueOf(fn)
-	if fv.Kind() != reflect.Func {
-		panic("Argument fn must be a function type")
-	}
-	j.f = fv
-	ft := fv.Type()
-	if ft.NumIn() == 0 {
-		j.args = nil
-	} else {
-		in := make([]reflect.Value, ft.NumIn())
-		for i := range in {
-			in[i] = reflect.ValueOf(args[i])
-			if in[i].Kind() != ft.In(i).Kind() {
-				fname := runtime.FuncForPC(fv.Pointer()).Name()
-				panic(fmt.Sprintf("cannot use type %T as type %s in argument to %s", args[i], ft.In(i).Name(), fname))
-			}
-		}
-		j.args = in
-	}
-	j.scheduler.addJob(j)
+// Every schedules a new periodic job.
+func (j *job) Every(interval uint) *job {
+	j.interval = interval
+	return j
+}
+
+func (j *job) Seconds() {
+	j.unit = time.Second
+}
+
+func (j *job) Minutes() {
+	j.unit = time.Minute
+}
+
+func (j *job) Hours() {
+	j.unit = time.Hour
 }
