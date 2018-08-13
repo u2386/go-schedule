@@ -15,21 +15,19 @@ type Scheduler struct {
 // RunOnce runs all jobs.
 func (s *Scheduler) RunOnce() {
 	for _, j := range s.jobs {
-		go j.run()
-	}
-}
-
-// RunForver is like RunOnce but runs forever.
-func (s *Scheduler) RunForver() {
-	for {
-		for _, j := range s.jobs {
+		if j.state == Waiting {
 			s.schedule(j)
+		}
+		if j.canRun() {
 			go j.run()
 		}
 	}
 }
 
 func (s *Scheduler) schedule(j *job) {
+	if j.nextTime.After(time.Now()) {
+		return
+	}
 	j.nextTime = time.Now().Add(time.Duration(j.interval) * j.unit)
 }
 
@@ -56,6 +54,7 @@ func (s *Scheduler) Do(fn interface{}, args ...interface{}) (j *job) {
 		f:         fv,
 		args:      in,
 		scheduler: s,
+		state:     Waiting,
 	}
 	s.jobs = append(s.jobs, j)
 	return

@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+// States of Job
+const (
+	Waiting uint = 0
+	Running
+)
+
 type job struct {
 	f         reflect.Value
 	args      []reflect.Value
@@ -13,11 +19,14 @@ type job struct {
 	scheduler *Scheduler
 	nextTime  time.Time
 	lastTime  time.Time
+	state     uint
 }
 
 func (j *job) run() {
 	j.lastTime = time.Now()
+	j.state = Running
 	j.f.Call(j.args)
+	j.state = Waiting
 }
 
 // Every schedules a new periodic job.
@@ -36,4 +45,8 @@ func (j *job) Minutes() {
 
 func (j *job) Hours() {
 	j.unit = time.Hour
+}
+
+func (j *job) canRun() bool {
+	return j.state == Waiting && time.Now().After(j.nextTime)
 }

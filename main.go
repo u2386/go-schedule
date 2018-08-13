@@ -17,6 +17,6 @@ func runWithReturn(s string) {
 
 func main() {
 	var args = []interface{}{"Test"}
-	scheduler.Do(runWithReturn, args...)
-	scheduler.RunAll()
+	scheduler.Do(runWithReturn, args...).Every(1).Seconds()
+	scheduler.RunOnce()
 }
